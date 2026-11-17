@@ -28,5 +28,39 @@ Newest first. One entry per decision: date, what was decided, why, and what was 
 - Dropped Postgres, SQLAlchemy and Alembic from the template; the package is `scache`. Hand-written
   SVG instead of matplotlib (no extra dependency).
 
+## 2026-11-17 – M2: Redis backend and API
+- **Raw redis-py + FT.SEARCH, not RedisVL.** The schema is one HASH, one index, one KNN query;
+  RedisVL would add a dependency (and its own schema layer) for roughly 60 lines. Easier to see
+  exactly which filter runs.
+- **HNSW, COSINE, FLOAT32.** Scales past brute force; at M2's sizes FLAT would be as good. The
+  index is created with the embedder's dims and refuses to open with different dims.
+- **Filter strategy: pre-filter inside KNN.** Query is `(@ns:{..} @user:{..} @expires_at:[(now +inf])
+  =>[KNN k ...]`, so other scopes cannot leak in or crowd out the top-k (test: 30 closer entries in
+  another namespace). Users are stored as `u:<id>`, "no user" as `none`; TAG values are escaped.
+- **TTL twice.** `expires_at` is filtered against the cache clock (exact, testable with a fake
+  clock); the key also gets PEXPIRE ttl+1s so Redis garbage-collects. Entries without TTL use a
+  finite sentinel (9e15) because NUMERIC fields cannot hold inf.
+- **Ids are validated, TAG fields are case-sensitive (review fix).** Namespace, user id and tags
+  must match `[A-Za-z0-9_.:@-]{1,128}` (API and cache layer). TAG fields use `|` as separator (not
+  in the charset) and CASESENSITIVE, so `x,u:victim` cannot index as two tags and Bob/bob,
+  Acme/acme, Billing/billing stay apart, as in the in-memory backend. `candidates()` also drops any
+  document whose decoded (ns, user) is not exactly the requested scope. An index created by the
+  earlier version (case-insensitive) is refused with a clear error: drop it or change the prefix.
+- **The API trusts its caller.** No auth; `user_id` is taken from the body. It is meant to sit
+  behind a gateway that sets namespace and user from the authenticated identity, on 127.0.0.1.
+  Feedback and invalidate require a namespace (feedback: also the user for personal entries) so a
+  call can only touch its own scope; tag invalidation is per namespace. A caller that can pick any
+  namespace can still wipe it, which is why auth belongs in front.
+- **Vectors are fetched by key** after the search: binary fields in the FT.SEARCH reply get mangled
+  by response decoding.
+- **Never-cache** lives in `policy.py`, separate from the scoper: no_cache and personal-without-user
+  (also enforced by the scoper), volatile time words (today/yesterday/tomorrow/now) and ISO dates,
+  error-looking answers. Such requests are answered with `cache: bypass`: no lookup, no store.
+  Month names and "last week" are left to the time-scope guard, not blocked outright.
+- **API defaults are fake** (embedder and generator) so it runs with no model; threshold 0.79 is the
+  M1 guarded choice. A lock serialises cache access (the in-memory backend is not thread-safe);
+  generation happens outside it. Stats are in-process counters, not stored in Redis.
+- **Feedback** counts every `wrong:true` report, and evicts the entry if it still exists and belongs to the given namespace (and, for a personal entry, the given user).
+
 ## 2026-11-17 – Project created from the `fastapi-app` template
 Why: same layout, test setup and CI as the other projects, so nothing has to be set up by hand.

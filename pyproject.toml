@@ -9,6 +9,7 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "numpy>=2.0",
     "pyyaml>=6.0",
+    "redis>=8.1.0",
 ]
 
 [project.scripts]
@@ -26,3 +27,6 @@ packages = ["src/scache"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.pytest.ini_options]
+markers = ["redis: needs a Redis Stack server; skipped unless SCACHE_REDIS_URL is set"]

@@ -3,6 +3,52 @@
 Reuses answers for semantically similar LLM requests to cut cost and latency, with a measured
 false-hit rate and safe invalidation.
 
+## Run the cache as an HTTP proxy (M2)
+
+Redis Stack (RediSearch HNSW, cosine) on `127.0.0.1:6390`, then the API on `127.0.0.1:8050`:
+
+```sh
+docker compose up -d --wait
+SCACHE_REDIS_URL=redis://127.0.0.1:6390 uv run uvicorn scache.main:app --port 8050
+# without SCACHE_REDIS_URL the in-memory backend is used
+```
+
+Settings (env): `SCACHE_REDIS_URL`, `SCACHE_REDIS_PREFIX`, `SCACHE_THRESHOLD` (0.79),
+`SCACHE_EMBEDDER` and `SCACHE_GENERATOR` (`fake` default, or `ollama`: `nomic-embed-text` and
+`qwen2.5:3b` on 127.0.0.1:11434), `SCACHE_DEFAULT_TTL` (seconds). The fake embedder is a trigram
+hash, only good for trying the API; use `ollama` for real semantics.
+
+```sh
+H='Content-Type: application/json'
+curl -s localhost:8050/v1/complete -H "$H" -d '{"prompt":"What is the refund window for EU orders?","namespace":"shop","tags":["policy"],"ttl":3600}'
+# -> {"id":"...","cache":"miss",...}; repeat it -> "cache":"hit","similarity":1.0
+curl -s localhost:8050/v1/complete -H "$H" -d '{"prompt":"What is the refund window for US orders?","namespace":"shop"}'
+# -> miss, reasons: ["entity_guard: entities differ ..."]
+curl -s localhost:8050/v1/complete -H "$H" -d '{"prompt":"Where is my order?","namespace":"shop","user_id":"u1"}'
+curl -s localhost:8050/v1/feedback -H "$H" -d '{"id":"<id of a bad hit>","namespace":"shop","wrong":true}'  # evicts + counts
+curl -s localhost:8050/v1/invalidate -H "$H" -d '{"namespace":"shop","tag":"policy"}'    # omit tag: whole namespace
+curl -s localhost:8050/v1/stats
+docker compose down
+```
+
+`POST /v1/complete` returns `cache: hit | miss | bypass`, `similarity`, `reasons` (guard denials,
+never-cache reasons), `latency_ms` and the entry `id`. Never cached (answered with `bypass` or not
+stored): `no_cache: true`, personal prompts without `user_id`, prompts with today/now/tomorrow or an
+ISO date, and answers that look like errors. Each rule is a switch on `NeverCachePolicy`.
+Personal prompts are stored per `user_id`; everything is partitioned by `namespace`.
+
+**Security: the API trusts its caller.** There is no authentication. `user_id` and `namespace` come
+from the request body, so anyone who can reach the port can claim any user, read that user's
+cached personal answers, evict entries or wipe a namespace. It binds to 127.0.0.1 only; put it
+behind your own auth/gateway that sets `namespace` and `user_id` from the authenticated identity,
+and do not expose the port. `/v1/feedback` and `/v1/invalidate` require a `namespace` (feedback
+also needs `user_id` for personal entries) and only touch entries in that scope. Namespaces, user
+ids and tags are case-sensitive and limited to `[A-Za-z0-9_.:@-]`, 1-128 chars (422 otherwise).
+
+Tests: `uv run pytest` runs without Redis (Redis tests are skipped). With the compose service up:
+`SCACHE_REDIS_URL=redis://127.0.0.1:6390 uv run pytest` runs the same backend contract suite
+against Redis as well.
+
 ## The problem
 
 "What is the refund window for EU orders?" and "...for US orders?" are almost the same vector, but

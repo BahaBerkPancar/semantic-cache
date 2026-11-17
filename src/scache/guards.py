@@ -254,8 +254,11 @@ class Scoper:
     """
 
     def scope(self, prompt: str, namespace: str, user_id: str | None) -> Scope | None:
-        if not namespace or user_id == "":
-            raise ValueError("namespace and user_id must be non-empty when given")
+        from .cache import validate_id  # local import: cache imports this module
+
+        validate_id(namespace, "namespace")
+        if user_id is not None:
+            validate_id(user_id, "user_id")
         if is_personal(prompt):
             if user_id is None:
                 return None

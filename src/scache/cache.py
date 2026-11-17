@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 import uuid
 from collections.abc import Callable, Sequence
@@ -19,6 +20,17 @@ class Embedder(Protocol):
         ...
 
 
+ID_RE = re.compile(r"[A-Za-z0-9_.:@-]{1,128}")
+ID_PATTERN = "^" + ID_RE.pattern + "$"  # anchored: pydantic searches, it does not fullmatch
+
+
+def validate_id(value: str, what: str) -> str:
+    """Namespaces, user ids and tags use a safe charset: no separators, spaces or wildcards."""
+    if not isinstance(value, str) or not ID_RE.fullmatch(value):
+        raise ValueError(f"{what} must match [A-Za-z0-9_.:@-]{{1,128}}")
+    return value
+
+
 @dataclass(frozen=True)
 class Context:
     namespace: str = "default"
@@ -33,6 +45,7 @@ class Entry:
     scope: Scope
     tags: frozenset[str] = frozenset()
     expires_at: float | None = None
+    ttl: float | None = None  # relative seconds as requested; backends may use it for GC
     id: str = field(default_factory=lambda: uuid.uuid4().hex)
 
 
@@ -43,6 +56,7 @@ class Lookup:
     similarity: float | None = None
     matched_prompt: str | None = None
     reason: str = ""
+    entry_id: str | None = None
 
 
 def normalize(v: np.ndarray) -> np.ndarray:
@@ -59,7 +73,7 @@ def cosine_similarity(query: np.ndarray, matrix: np.ndarray) -> np.ndarray:
 
 
 class Backend(Protocol):
-    """Storage interface. M2 adds a Redis implementation behind the same methods."""
+    """Storage interface, implemented by InMemoryBackend and RedisBackend (scache.redis_backend)."""
 
     def add(self, entry: Entry) -> None: ...
 
@@ -67,7 +81,13 @@ class Backend(Protocol):
         self, vector: np.ndarray, scope: Scope, now: float, k: int
     ) -> list[tuple[Entry, float]]: ...
 
-    def invalidate_tag(self, tag: str) -> int: ...
+    def invalidate_tag(self, tag: str, namespace: str | None = None) -> int: ...
+
+    def invalidate_namespace(self, namespace: str) -> int: ...
+
+    def scope_of(self, entry_id: str) -> Scope | None: ...
+
+    def delete(self, entry_id: str) -> bool: ...
 
     def __len__(self) -> int: ...
 
@@ -95,10 +115,27 @@ class InMemoryBackend:
         order = np.argsort(-sims, kind="stable")[:k]
         return [(live[i], float(sims[i])) for i in order]
 
-    def invalidate_tag(self, tag: str) -> int:
+    def invalidate_tag(self, tag: str, namespace: str | None = None) -> int:
         before = len(self._entries)
-        self._entries = [e for e in self._entries if tag not in e.tags]
+        self._entries = [
+            e
+            for e in self._entries
+            if not (tag in e.tags and (namespace is None or e.scope[0] == namespace))
+        ]
         return before - len(self._entries)
+
+    def scope_of(self, entry_id: str) -> Scope | None:
+        return next((e.scope for e in self._entries if e.id == entry_id), None)
+
+    def invalidate_namespace(self, namespace: str) -> int:
+        before = len(self._entries)
+        self._entries = [e for e in self._entries if e.scope[0] != namespace]
+        return before - len(self._entries)
+
+    def delete(self, entry_id: str) -> bool:
+        before = len(self._entries)
+        self._entries = [e for e in self._entries if e.id != entry_id]
+        return len(self._entries) < before
 
     def __len__(self) -> int:
         return len(self._entries)
@@ -140,9 +177,28 @@ class SemanticCache:
                 break  # sorted descending: nothing further qualifies
             verdict = run_guards(prompt, entry.prompt, self.guards)
             if verdict.allow:
-                return Lookup(True, entry.answer, sim, entry.prompt)
+                return Lookup(True, entry.answer, sim, entry.prompt, entry_id=entry.id)
             denial = denial or verdict.reason
         return Lookup(False, similarity=cands[0][1], reason=denial or "below_threshold")
+
+    def store(
+        self,
+        prompt: str,
+        answer: str,
+        ctx: Context = Context(),
+        tags: Sequence[str] = (),
+        ttl: float | None = None,
+    ) -> Entry | None:
+        """Store an answer. Returns the entry, or None when the prompt must never be cached."""
+        scope = self.scoper.scope(prompt, ctx.namespace, ctx.user_id)
+        if scope is None:
+            return None
+        for t in tags:
+            validate_id(t, "tag")
+        expires = None if ttl is None else self.clock() + ttl
+        entry = Entry(prompt, answer, self._vector(prompt), scope, frozenset(tags), expires, ttl)
+        self.backend.add(entry)
+        return entry
 
     def put(
         self,
@@ -152,15 +208,20 @@ class SemanticCache:
         tags: Sequence[str] = (),
         ttl: float | None = None,
     ) -> bool:
-        """Store an answer. Returns False when the prompt must never be cached."""
-        scope = self.scoper.scope(prompt, ctx.namespace, ctx.user_id)
-        if scope is None:
-            return False
-        expires = None if ttl is None else self.clock() + ttl
-        self.backend.add(
-            Entry(prompt, answer, self._vector(prompt), scope, frozenset(tags), expires)
-        )
-        return True
+        """Like store(), returning whether the answer was stored."""
+        return self.store(prompt, answer, ctx, tags, ttl) is not None
 
-    def invalidate(self, tag: str) -> int:
-        return self.backend.invalidate_tag(tag)
+    def invalidate(self, tag: str, namespace: str | None = None) -> int:
+        return self.backend.invalidate_tag(tag, namespace)
+
+    def invalidate_namespace(self, namespace: str) -> int:
+        return self.backend.invalidate_namespace(namespace)
+
+    def evict(self, entry_id: str, ctx: Context) -> bool:
+        """Delete an entry only if it lives in the caller's scope (namespace, shared or own)."""
+        scope = self.backend.scope_of(entry_id)
+        if scope is None or scope[0] != ctx.namespace:
+            return False
+        if scope[1] is not None and scope[1] != ctx.user_id:
+            return False
+        return self.backend.delete(entry_id)
