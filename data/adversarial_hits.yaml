@@ -1,0 +1,358 @@
+# Held-out adversarial hit pairs (all label: hit), see scripts/make_pairs.py.
+- id: adv-number_words-001
+  a: Can I return an item within thirty days?
+  b: Can I return an item within 30 days?
+  label: hit
+  type: number_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-number_words-002
+  a: Can I add twenty-five users to the team?
+  b: Can I add 25 users to the team?
+  label: hit
+  type: number_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-number_words-003
+  a: Is a fifteen minute break included in the session?
+  b: Is a 15 minute break included in the session?
+  label: hit
+  type: number_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-number_words-004
+  a: Does the licence cover a hundred seats?
+  b: Does the licence cover 100 seats?
+  label: hit
+  type: number_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-number_words-005
+  a: Is there a seventy percent discount for schools?
+  b: Is there a 70 percent discount for schools?
+  label: hit
+  type: number_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-number_words-006
+  a: Are backups kept for eighty days?
+  b: Are backups kept for 80 days?
+  label: hit
+  type: number_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-number_words-007
+  a: Can I attach nineteen files to one ticket?
+  b: Can I attach 19 files to one ticket?
+  label: hit
+  type: number_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-number_words-008
+  a: What happens after forty-two failed requests?
+  b: What happens after 42 failed requests?
+  label: hit
+  type: number_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-number_words-009
+  a: Do you ship orders under $50?
+  b: Do you ship orders under 50 dollars?
+  label: hit
+  type: number_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-number_words-010
+  a: Can the plan cover 1,000 users?
+  b: Can the plan cover 1000 users?
+  label: hit
+  type: number_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-version_words-001
+  a: Is v3 of the API stable?
+  b: Is version three of the API stable?
+  label: hit
+  type: version_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-version_words-002
+  a: How do I move to release v2?
+  b: How do I move to release version two?
+  label: hit
+  type: version_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-version_words-003
+  a: Does API v1 still receive fixes?
+  b: Does API version 1 still receive fixes?
+  label: hit
+  type: version_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-version_words-004
+  a: What breaks when I upgrade to v4.1?
+  b: What breaks when I upgrade to version 4.1?
+  label: hit
+  type: version_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-version_words-005
+  a: Is v5 ready for production?
+  b: Is version five ready for production?
+  label: hit
+  type: version_words
+  user_a: user-1
+  user_b: user-1
+- id: adv-quarter-001
+  a: When are the Q3 results published?
+  b: When are the third quarter results published?
+  label: hit
+  type: quarter
+  user_a: user-1
+  user_b: user-1
+- id: adv-quarter-002
+  a: Where is the Q1 report?
+  b: Where is the first quarter report?
+  label: hit
+  type: quarter
+  user_a: user-1
+  user_b: user-1
+- id: adv-quarter-003
+  a: What is in the Q4 plan?
+  b: What is in the fourth quarter plan?
+  label: hit
+  type: quarter
+  user_a: user-1
+  user_b: user-1
+- id: adv-quarter-004
+  a: Who approves the 2nd quarter budget?
+  b: Who approves the Q2 budget?
+  label: hit
+  type: quarter
+  user_a: user-1
+  user_b: user-1
+- id: adv-quarter-005
+  a: What is the Q3 target?
+  b: What is the quarter 3 target?
+  label: hit
+  type: quarter
+  user_a: user-1
+  user_b: user-1
+- id: adv-time_synonym-001
+  a: How many tickets were closed last week?
+  b: How many tickets were closed in the previous week?
+  label: hit
+  type: time_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-time_synonym-002
+  a: Show orders from yesterday.
+  b: Show orders from the previous day.
+  label: hit
+  type: time_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-time_synonym-003
+  a: What is the service status right now?
+  b: What is the service status at the moment?
+  label: hit
+  type: time_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-time_synonym-004
+  a: What changes next month?
+  b: What changes in the coming month?
+  label: hit
+  type: time_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-time_synonym-005
+  a: How many sign-ups did we have last year?
+  b: How many sign-ups did we have in the previous year?
+  label: hit
+  type: time_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-time_synonym-006
+  a: What is the plan this year?
+  b: What is the plan for the current year?
+  label: hit
+  type: time_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-time_synonym-007
+  a: Who is on call today?
+  b: Who is on call this day?
+  label: hit
+  type: time_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-negation_synonym-001
+  a: Why can't I export the report?
+  b: Why am I unable to export the report?
+  label: hit
+  type: negation_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-negation_synonym-002
+  a: Does the old plan no longer include support?
+  b: Does the old plan not include support anymore?
+  label: hit
+  type: negation_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-negation_synonym-003
+  a: Why isn't the invoice showing up?
+  b: Why is the invoice not showing up?
+  label: hit
+  type: negation_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-negation_synonym-004
+  a: Why doesn't the sync run overnight?
+  b: Why does the sync not run overnight?
+  label: hit
+  type: negation_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-negation_synonym-005
+  a: Why cannot the file be shared?
+  b: Why can not the file be shared?
+  label: hit
+  type: negation_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-negation_synonym-006
+  a: Why won't the page load?
+  b: Why will the page not load?
+  label: hit
+  type: negation_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-negation_synonym-007
+  a: Can I sign in without a password?
+  b: Can I sign in with no password?
+  label: hit
+  type: negation_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-negation_synonym-008
+  a: Why does the export never finish?
+  b: Why does the export not ever finish?
+  label: hit
+  type: negation_synonym
+  user_a: user-1
+  user_b: user-1
+- id: adv-date_format-001
+  a: What changed on 2024-01-05?
+  b: What changed on January 5, 2024?
+  label: hit
+  type: date_format
+  user_a: user-1
+  user_b: user-1
+- id: adv-date_format-002
+  a: What shipped on 5 Jan 2024?
+  b: What shipped on 2024-01-05?
+  label: hit
+  type: date_format
+  user_a: user-1
+  user_b: user-1
+- id: adv-date_format-003
+  a: What is due on 03/04/2024?
+  b: What is due on 3/4/2024?
+  label: hit
+  type: date_format
+  user_a: user-1
+  user_b: user-1
+- id: adv-date_format-004
+  a: What happens on December 25?
+  b: What happens on 25 December?
+  label: hit
+  type: date_format
+  user_a: user-1
+  user_b: user-1
+- id: adv-date_format-005
+  a: What is open on March 3rd?
+  b: What is open on March 3?
+  label: hit
+  type: date_format
+  user_a: user-1
+  user_b: user-1
+- id: adv-date_format-006
+  a: When does the contract end on 2025-12-31?
+  b: When does the contract end on 31 December 2025?
+  label: hit
+  type: date_format
+  user_a: user-1
+  user_b: user-1
+- id: adv-entity_forms-001
+  a: What is the refund window for the EU?
+  b: What is the refund window for the European Union?
+  label: hit
+  type: entity_forms
+  user_a: user-1
+  user_b: user-1
+- id: adv-entity_forms-002
+  a: Do you ship to the US?
+  b: Do you ship to the United States?
+  label: hit
+  type: entity_forms
+  user_a: user-1
+  user_b: user-1
+- id: adv-entity_forms-003
+  a: Is there a UK support line?
+  b: Is there a United Kingdom support line?
+  label: hit
+  type: entity_forms
+  user_a: user-1
+  user_b: user-1
+- id: adv-entity_forms-004
+  a: What taxes apply to European customers?
+  b: What taxes apply to customers in the EU?
+  label: hit
+  type: entity_forms
+  user_a: user-1
+  user_b: user-1
+- id: adv-entity_forms-005
+  a: What do Americans pay for delivery?
+  b: What do US customers pay for delivery?
+  label: hit
+  type: entity_forms
+  user_a: user-1
+  user_b: user-1
+- id: adv-entity_forms-006
+  a: Which perks do Enterprises get?
+  b: Which perks does the Enterprise plan give?
+  label: hit
+  type: entity_forms
+  user_a: user-1
+  user_b: user-1
+- id: adv-entity_forms-007
+  a: What do Pro plans cost?
+  b: What does the Pro plan cost?
+  label: hit
+  type: entity_forms
+  user_a: user-1
+  user_b: user-1
+- id: adv-alnum_codes-001
+  a: Can I upload MP3 files?
+  b: Can I upload mp3 files?
+  label: hit
+  type: alnum_codes
+  user_a: user-1
+  user_b: user-1
+- id: adv-alnum_codes-002
+  a: How do I create an S3 bucket?
+  b: How do I create an s3 bucket?
+  label: hit
+  type: alnum_codes
+  user_a: user-1
+  user_b: user-1
+- id: adv-alnum_codes-003
+  a: Do you support IPv6?
+  b: Do you support ipv6?
+  label: hit
+  type: alnum_codes
+  user_a: user-1
+  user_b: user-1

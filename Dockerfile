@@ -13,4 +13,4 @@ RUN uv sync --no-dev
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
-CMD ["sh", "-c", "alembic upgrade head && uvicorn semantic_cache.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "uvicorn scache.main:app --host 0.0.0.0 --port 8000"]
