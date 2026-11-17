@@ -123,13 +123,65 @@ countries outside the gazetteer.
 - Small groups (about 15 per type on the test split) give wide CIs; the thresholds were selected
   from 178 validation pairs.
 
+## Showcase: replaying a traffic log (M3)
+
+`scache traffic` writes `data/traffic.jsonl`: 2,000 **synthetic, fictional** requests over 7 days
+(a shop / SaaS support desk, seed 20261118, no text from the pair set). Each carries a hidden
+`intent_id`: same intent means the same correct answer. The configured mix is 30% exact
+repeats and 25% paraphrases, but the paraphrase pool (4 per intent) runs out and falls back to
+exact repeats, so the log ends up as: 39% exact repeats, 14% paraphrases of
+earlier intents, 17% near-misses that are new intents (region/plan swaps, number swaps, negation,
+weekday/month/relative-time swaps), 9% personal prompts from 8 users, 7% time-sensitive prompts
+(a new intent each day), 10% one-off long-tail prompts, 4% first asks; popularity is Zipf-like.
+`scache replay` streams it in time order through the in-memory cache; thresholds come from
+`bench/results.json` (M1, chosen on pair validation data, not tuned on this traffic) and entries
+live 24 h on the log's clock. Full tables, wrong hits by type and a cumulative chart:
+`bench/replay.md`, `bench/replay.svg`. Intervals are block-bootstrap 95%: they resample the
+outcomes of this one fixed run, so they show sampling noise in it, ignore dependence between
+blocks (cache warm-up) and do not show variation across different traffic.
+
+| Variant | Hit rate | Wrong hits per 1,000 requests | Cross-user leaks | Cost saved (illustrative) |
+|---|---|---|---|---|
+| exact match only | 41.6% | 13.5 [9.0, 18.5] | 0 | 44.7% |
+| cosine only, M1 threshold 0.98 | 46.5% | 69.5 [59.5, 80.5] | 99 | 48.9% |
+| cosine only, threshold 0.79 | 76.8% | 516.0 [487.0, 544.5] | 111 | 78.2% |
+| cosine + guards, threshold 0.79 | 62.9% | 78.0 [64.0, 92.0] | 0 | 65.0% |
+| cosine + guards + never-cache policy | 58.1% | 53.0 [43.5, 64.5] | 0 | 60.2% |
+
+What the guards buy and cost: at the same threshold they remove all 111 cross-user leaks and cut
+wrong hits from 1,032 to 156 (a wrong answer on half of all requests becomes 8%), for 14 points of
+hit rate (76.8% to 62.9%) and 13 points of saved spend. Correct hits save 25.1% of total
+spend with cosine at 0.79 versus 57.6% with guards, i.e. 32% versus 89% of the savings each
+variant reports (25.1/78.2, 57.6/65.0). What is still wrong with the
+guards: 73 of the 156 are long-tail prompts that differ only by an app or object name the
+gazetteer does not know ("Slack" vs "Jira"), 37 are stale time-sensitive answers (served within
+the 24 h TTL), and some are guard-blind swaps (unknown countries, "May"). The never-cache policy
+removes the stale ones at the price of 5 points of hit rate. Exact match alone is safe but only
+reaches 42%, and still serves 27 stale answers.
+
+Latency and cost use an **illustrative** model (input $1 / output $4 per million tokens;
+generation 300 ms + 12 ms per output token; 25 ms per embedding), not a provider's real prices.
+Measured cache lookup (search plus guards, embedding excluded) is a few hundred microseconds on
+this machine, so the saving is the avoided generation; it is written to `bench/replay.md` but
+not compared by `--check`.
+
+Limits: the traffic is synthetic and written by the same author as the guards, with templates
+close to the vocabulary the guards check; the intent labels hold by construction, not from human
+judgement; the 8% of "wrong" served by the guards is likely optimistic for real traffic, and the
+unknown-entity gap is only as wide as this catalogue makes it. A wrong hit is not stored, so a
+repeated near-miss keeps being served wrongly (this inflates the cosine-only rows). The
+in-memory backend ignores Redis effects (HNSW recall, network).
+
 ## Usage
 
 ```bash
 uv sync
-uv run scache embed          # fill data/embeddings.npz from local Ollama (127.0.0.1:11434)
+uv run scache traffic        # write data/traffic.jsonl (synthetic, seeded)
+uv run scache embed          # fill data/embeddings.npz (pairs + traffic) from local Ollama (127.0.0.1:11434)
 uv run scache bench          # write bench/results.{json,md} and bench/curve.svg
 uv run scache bench --check  # recompute and compare with bench/results.json (tolerance 0.005)
+uv run scache replay         # write bench/replay.{json,md,svg}
+uv run scache replay --check # recompute; must reproduce replay.json (tolerance 0.005) and replay.md
 uv run pytest && uv run ruff check .   # offline; tests never need Ollama
 ```
 
@@ -141,6 +193,6 @@ refuses to run on a stale cache. Both sides use the `search_query: ` prefix.
 - `src/scache/cache.py` - `SemanticCache(backend, embedder, threshold, guards, scoper)`,
   `InMemoryBackend` (numpy brute force; interface ready for Redis in M2)
 - `src/scache/guards.py` - numbers, entities, negation, time scope, personal; scoping
-- `src/scache/bench.py`, `cli.py`, `embeddings.py`
-- `data/pairs.yaml` (generated by `scripts/make_pairs.py`), `data/embeddings.npz`
+- `src/scache/bench.py`, `traffic.py`, `replay.py`, `cli.py`, `embeddings.py`
+- `data/pairs.yaml` (generated by `scripts/make_pairs.py`), `data/embeddings.npz`, `data/traffic.jsonl`
 - `plans/` - roadmap and milestone plans; `AGENTS.md` - rules for agents; `DECISIONS.md`

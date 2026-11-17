@@ -64,3 +64,32 @@ Newest first. One entry per decision: date, what was decided, why, and what was 
 
 ## 2026-11-17 – Project created from the `fastapi-app` template
 Why: same layout, test setup and CI as the other projects, so nothing has to be set up by hand.
+
+## 2026-11-18 – M3: traffic replay
+- **Hidden intent ids, correct = same intent.** The generator builds every request from an intent
+  catalogue (slot families: region/plan, number, negation pairs, weekday/month/relative time, FAQ),
+  so labels are exact by construction. Cost: they encode the author's idea of "same question", and
+  the templates sit close to the guards' vocabulary, so guard numbers are optimistic.
+- **Personal and time-sensitive intents.** A personal prompt is a different intent per user; a
+  time-sensitive prompt is a new intent each day. That makes cross-user leaks and stale hits
+  countable without a model.
+- **Threshold from M1, two cosine-only rows.** Guarded variants use M1's chosen 0.79. Cosine-only
+  is shown at its own M1 choice (0.98, which met no false-hit target) and at 0.79, since 0.98 is
+  almost exact match and the 0.79 row is the fair "what do the guards buy" comparison.
+- **No re-tuning on traffic**, and nothing in the replay reads the traffic to pick a threshold
+  (a test checks the value comes from the results file).
+- **Answer = intent id.** The replay stores the request's intent id as the "answer", so no model is
+  called; correctness is an equality check. Wrong hits are not stored (as in a real cache), so a
+  repeated near-miss is served wrongly again; this inflates cosine-only wrong counts.
+- **Never-cache policy as its own row.** `SemanticCache` does not know the policy (it lives in the
+  API layer), so the replay applies `NeverCachePolicy` before lookup and store.
+- **Cost and latency are modelled, not measured.** Illustrative price table and latency formula so
+  `--check` is deterministic; the measured lookup time is reported separately and excluded from
+  `--check`. `--check` compares replay.json (tolerance 0.005) and requires replay.md to equal the
+  report rendered from the recomputed numbers (timing carried over).
+- **Block bootstrap**, 50-request blocks, 1,000 resamples, fixed seed, same resamples for every
+  variant. It resamples the outcomes of one fixed run: the CIs show sampling noise in that run,
+  ignore dependence between blocks (cache warm-up) and say nothing about different traffic.
+- **Embeddings in one file.** Traffic texts go into the same `data/embeddings.npz` (stale detection
+  by hash as before); replay fails early with exit code 2 if any text is missing or stale. Embedding
+  calls use batches of 16.
